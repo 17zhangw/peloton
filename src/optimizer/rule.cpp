@@ -55,8 +55,34 @@ RuleSet<Operator,OperatorType,OperatorExpr>::RuleSet() {
 
 template <>
 RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
-  AddRewriteRule(RewriteRuleSetName::COMPARATOR_ELIMINATION,
-                 new ComparatorElimination());
+  std::vector<std::pair<RuleType,ExpressionType>> comp_elim_pairs = {
+    std::make_pair(RuleType::CONSTANT_COMPARE_EQUAL, ExpressionType::COMPARE_EQUAL),
+    std::make_pair(RuleType::CONSTANT_COMPARE_NOTEQUAL, ExpressionType::COMPARE_NOTEQUAL),
+    std::make_pair(RuleType::CONSTANT_COMPARE_LESSTHAN, ExpressionType::COMPARE_LESSTHAN),
+    std::make_pair(RuleType::CONSTANT_COMPARE_GREATERTHAN, ExpressionType::COMPARE_GREATERTHAN),
+    std::make_pair(RuleType::CONSTANT_COMPARE_LESSTHANOREQUALTO, ExpressionType::COMPARE_LESSTHANOREQUALTO),
+    std::make_pair(RuleType::CONSTANT_COMPARE_GREATERTHANOREQUALTO, ExpressionType::COMPARE_GREATERTHANOREQUALTO)
+  };
+
+  for (auto &pair : comp_elim_pairs) {
+    AddRewriteRule(
+      RewriteRuleSetName::COMPARATOR_ELIMINATION,
+      new ComparatorElimination(pair.first, pair.second)
+    );
+  }
+
+  AddRewriteRule(
+    RewriteRuleSetName::EQUIVALENT_TRANSFORM,
+    new EquivalentTransform(RuleType::EQUIV_AND, ExpressionType::CONJUNCTION_AND)
+  );
+
+  AddRewriteRule(
+    RewriteRuleSetName::EQUIVALENT_TRANSFORM,
+    new EquivalentTransform(RuleType::EQUIV_OR, ExpressionType::CONJUNCTION_OR)
+  );
+
+  AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TransitiveSingleDepthTransform());
+  AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TransitiveClosureConstantTransform());
 }
 
 template <>

@@ -16,6 +16,7 @@
 #include "optimizer/operator_visitor.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/absexpr_expression.h"
+#include "expression/group_marker_expression.h"
 
 namespace peloton {
 namespace optimizer {
@@ -74,6 +75,15 @@ bool GroupBindingIterator<Node,OperatorType,OperatorExpr>::HasNext() {
 
 // Specialization
 template <>
+bool GroupBindingIterator<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::HasNext() {
+  if (pattern_->Type() == ExpressionType::GROUP_MARKER) {
+    return current_item_index_ == 0;
+  }
+
+  return HasNextBinding();
+}
+
+template <>
 bool GroupBindingIterator<Operator,OpType,OperatorExpression>::HasNext() {
   LOG_TRACE("HasNext");
 
@@ -95,6 +105,17 @@ std::shared_ptr<OperatorExpression> GroupBindingIterator<Operator,OpType,Operato
   if (pattern_->Type() == OpType::Leaf) {
     current_item_index_ = num_group_items_;
     return std::make_shared<OperatorExpression>(LeafOperator::make(group_id_));
+  }
+  return current_iterator_->Next();
+}
+
+template <>
+std::shared_ptr<AbsExpr_Expression> GroupBindingIterator<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::Next() {
+  if (pattern_->Type() == ExpressionType::GROUP_MARKER) {
+    current_item_index_ = num_group_items_;
+
+    auto expr = std::make_shared<expression::GroupMarkerExpression>(group_id_);
+    return std::make_shared<AbsExpr_Expression>(AbsExpr_Container(expr));
   }
   return current_iterator_->Next();
 }

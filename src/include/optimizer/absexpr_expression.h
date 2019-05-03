@@ -10,7 +10,6 @@
 
 #pragma once
 
-// AbstractExpression Definition
 #include "expression/abstract_expression.h"
 #include "expression/conjunction_expression.h"
 #include "expression/comparison_expression.h"
@@ -22,28 +21,21 @@
 namespace peloton {
 namespace optimizer {
 
-// (TODO): rethink the AbsExpr_Container/Expression approach in comparion to abstract
-// Most of the core rule/optimizer code relies on the concept of an Operator /
-// OperatorExpression and the interface that the two functions respectively expose.
+// AbsExpr_Container and AbsExpr_Expression provides and serves an analogous purpose
+// to Operator and OperatorExpression. Each AbsExpr_Container wraps a single
+// AbstractExpression node with the children placed inside the AbsExpr_Expression.
 //
-// The annoying part is that an AbstractExpression blends together an Operator
-// and OperatorExpression. Second part, the AbstractExpression does not export the
-// correct interface that the rest of the system depends on.
-//
-// As an extreme level of simplification (sort of hacky), an AbsExpr_Container is
-// analogous to Operator and wraps a single AbstractExpression node. AbsExpr_Expression
-// is analogous to OperatorExpression.
-//
-// AbsExpr_Container does *not* handle memory correctly w.r.t internal instantiations
-// from Rule transformation. This is since Peloton itself mixes unique_ptrs and
-// hands out raw pointers which makes adding a shared_ptr here extremely problematic.
-// terrier uses only shared_ptr when dealing with AbstractExpression trees.
-
+// This is done to export the correct interface from the wrapped AbstractExpression
+// to the rest of the core rule/optimizer code/logic.
 class AbsExpr_Container {
  public:
-  AbsExpr_Container();
+  // Default constructors
+  AbsExpr_Container() = default;
+  AbsExpr_Container(const AbsExpr_Container &other) {
+    node = other.node;
+  }
 
-  AbsExpr_Container(const expression::AbstractExpression *expr) {
+  AbsExpr_Container(std::shared_ptr<expression::AbstractExpression> expr) {
     node = expr;
   }
 
@@ -55,7 +47,7 @@ class AbsExpr_Container {
     return ExpressionType::INVALID;
   }
 
-  const expression::AbstractExpression *GetExpr() const {
+  std::shared_ptr<expression::AbstractExpression> GetExpr() const {
     return node;
   }
 
@@ -86,23 +78,15 @@ class AbsExpr_Container {
 
   bool operator==(const AbsExpr_Container &r) {
     if (IsDefined() && r.IsDefined()) {
-      // (TODO): need a better way to determine deep equality
-
-      // NOTE:
-      // Without proper equality determinations, the groups will
-      // not be assigned correctly. Arguably, terrier does this
-      // better because a blind ExactlyEquals on different types
-      // of ConstantValueExpression under Peloton will crash!
-
-      // For now, just return (false).
-      // I don't anticipate this will affect correctness, just
-      // performance, since duplicate trees will have to evaluated
-      // over and over again, rather than being able to "borrow"
-      // a previous tree's rewrite.
-      //
-      // Probably not worth to create a "validator" since porting
-      // this to terrier anyways (?). == does not check Value
-      // so it's broken. ExactlyEqual requires precondition checking.
+      //(TODO): proper equality check when migrate to terrier
+      // Equality check relies on performing the following:
+      // - Check each node's ExpressionType
+      // - Check other parameters for a given node
+      // We believe that in terrier so long as the AbstractExpression
+      // are children-less, operator== provides sufficient checking.
+      // The reason behind why the children-less guarantee is required,
+      // is that the "real" children are actually tracked by the
+      // AbsExpr_Expression class.
       return false;
     } else if (!IsDefined() && !r.IsDefined()) {
       return true;
@@ -115,47 +99,20 @@ class AbsExpr_Container {
     return node != nullptr;
   }
 
-  //(TODO): fix memory management once go to terrier
-  expression::AbstractExpression *Rebuild(std::vector<expression::AbstractExpression*> children) {
-    switch (GetType()) {
-      case ExpressionType::COMPARE_EQUAL:
-      case ExpressionType::COMPARE_NOTEQUAL:
-      case ExpressionType::COMPARE_LESSTHAN:
-      case ExpressionType::COMPARE_GREATERTHAN:
-      case ExpressionType::COMPARE_LESSTHANOREQUALTO:
-      case ExpressionType::COMPARE_GREATERTHANOREQUALTO:
-      case ExpressionType::COMPARE_LIKE:
-      case ExpressionType::COMPARE_NOTLIKE:
-      case ExpressionType::COMPARE_IN:
-      case ExpressionType::COMPARE_DISTINCT_FROM: {
-        PELOTON_ASSERT(children.size() == 2);
-        return new expression::ComparisonExpression(GetType(), children[0], children[1]);
-      }
-      case ExpressionType::CONJUNCTION_AND:
-      case ExpressionType::CONJUNCTION_OR: {
-        PELOTON_ASSERT(children.size() == 2);
-        return new expression::ConjunctionExpression(GetType(), children[0], children[1]);
-      }
-      case ExpressionType::VALUE_CONSTANT: {
-        PELOTON_ASSERT(children.size() == 0);
-        auto cve = static_cast<const expression::ConstantValueExpression*>(node);
-        return new expression::ConstantValueExpression(cve->GetValue());
-      }
-      default: {
-        int type = static_cast<int>(GetType());
-        LOG_ERROR("Unimplemented Rebuild() for %d found", type);
-        return nullptr;
-      }
-    }
-  }
+  //(TODO): Function should use std::shared_ptr when migrate to terrier
+  expression::AbstractExpression *CopyWithChildren(std::vector<expression::AbstractExpression*> children);
 
  private:
-  const expression::AbstractExpression *node;
+  std::shared_ptr<expression::AbstractExpression> node;
 };
+
 
 class AbsExpr_Expression {
  public:
   AbsExpr_Expression(AbsExpr_Container op): op(op) {};
+
+  // Disallow copy and move constructor
+  DISALLOW_COPY_AND_MOVE(AbsExpr_Expression);
 
   void PushChild(std::shared_ptr<AbsExpr_Expression> op) {
     children.push_back(op);
@@ -180,4 +137,3 @@ class AbsExpr_Expression {
 
 }  // namespace optimizer
 }  // namespace peloton
-

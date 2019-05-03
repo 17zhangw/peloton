@@ -15,6 +15,7 @@
 #include "optimizer/operators.h"
 #include "optimizer/stats/stats_calculator.h"
 #include "optimizer/absexpr_expression.h"
+#include "expression/group_marker_expression.h"
 
 namespace peloton {
 namespace optimizer {
@@ -117,6 +118,22 @@ GroupExpression<Node,OperatorType,OperatorExpr> *Memo<Node,OperatorType,Operator
 }
 
 // Specialization for Memo::InsertExpression due to OpType
+template <>
+GroupExpression<AbsExpr_Container,ExpressionType,AbsExpr_Expression> *Memo<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::
+  InsertExpression(std::shared_ptr<GroupExpression<AbsExpr_Container,ExpressionType,AbsExpr_Expression>> gexpr,
+                   GroupID target_group,
+                   bool enforced) {
+  if (gexpr->Op().GetType() == ExpressionType::GROUP_MARKER) {
+    auto gm_expr = std::dynamic_pointer_cast<expression::GroupMarkerExpression>(gexpr->Op().GetExpr());
+    PELOTON_ASSERT(target_group ==UNDEFINED_GROUP ||
+                   target_group == gm_expr->GetGroupID());
+    gexpr->SetGroupID(gm_expr->GetGroupID());
+    return nullptr;
+  }
+
+  return InsertExpr(gexpr, target_group, enforced);
+}
+
 template <>
 GroupExpression<Operator,OpType,OperatorExpression> *Memo<Operator,OpType,OperatorExpression>::InsertExpression(
   std::shared_ptr<GroupExpression<Operator,OpType,OperatorExpression>> gexpr,

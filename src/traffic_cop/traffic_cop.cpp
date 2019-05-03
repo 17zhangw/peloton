@@ -317,6 +317,24 @@ std::shared_ptr<Statement> TrafficCop::PrepareStatement(
         tcop_txn_state_.top().first, default_database_name_);
     bind_node_visitor.BindNameToNode(
         statement->GetStmtParseTreeList()->GetStatement(0));
+
+    // Apply the rewriter if possible on the top statement
+    // TODO(): Rewrite more; move into optimizer and rewrite after unnesting
+    auto top_stmt = statement->GetStmtParseTreeList()->GetStatement(0);
+    switch (top_stmt->GetType()) {
+      case StatementType::SELECT: {
+        auto select = dynamic_cast<parser::SelectStatement*>(top_stmt);
+        
+        expression::AbstractExpression *where = select->where_clause.get();
+        auto optimal = rewriter_.RewriteExpression(where);
+        select->UpdateWhereClause(optimal);
+        rewriter_.Reset();
+        break;
+      }
+      default:
+        break;
+    }
+
     auto plan = optimizer_->BuildPelotonPlanTree(
         statement->GetStmtParseTreeList(), tcop_txn_state_.top().first);
     statement->SetPlanTree(plan);

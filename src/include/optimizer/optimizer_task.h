@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <vector>
+#include <set>
 
 #include "expression/abstract_expression.h"
 #include "common/internal_types.h"
@@ -264,6 +265,36 @@ class DeriveStats : public OptimizerTask<Operator,OpType, OperatorExpression> {
   ExprSet required_cols_;
 };
 
+
+/**
+ * @brief Higher abstraction above TopDownRewrite and BottomUpRewrite that
+ * implements functionality similar and relied upon by both TopDownRewrite
+ * and BottomUpRewrite.
+ */
+template <class Node, class OperatorType, class OperatorExpr>
+class RewriteTask : public OptimizerTask<Node,OperatorType,OperatorExpr> {
+ public:
+  RewriteTask(OptimizerTaskType type,
+              GroupID group_id,
+              std::shared_ptr<OptimizeContext<Node,OperatorType,OperatorExpr>> context,
+              RewriteRuleSetName rule_set_name)
+    : OptimizerTask<Node,OperatorType,OperatorExpr>(context, type),
+      group_id_(group_id),
+      rule_set_name_(rule_set_name) {}
+
+  virtual void execute() override {
+    LOG_ERROR("RewriteTask::execute invoked directly and not on derived");
+    PELOTON_ASSERT(0);
+  };
+
+ protected:
+  std::set<GroupID> GetUniqueChildGroupIDs();
+  bool OptimizeCurrentGroup(bool replace_on_match);
+
+  GroupID group_id_;
+  RewriteRuleSetName rule_set_name_;
+};
+
 /**
  * @brief Apply top-down rewrite pass, take in a rule set which must fulfill
  * that the lower level rewrite in the operator tree will not enable upper
@@ -271,19 +302,19 @@ class DeriveStats : public OptimizerTask<Operator,OpType, OperatorExpression> {
  * from the upper level to the lower level.
  */
 template <class Node, class OperatorType, class OperatorExpr>
-class TopDownRewrite : public OptimizerTask<Node,OperatorType,OperatorExpr> {
+class TopDownRewrite : public RewriteTask<Node,OperatorType,OperatorExpr> {
  public:
   TopDownRewrite(GroupID group_id,
                  std::shared_ptr<OptimizeContext<Node,OperatorType,OperatorExpr>> context,
                  RewriteRuleSetName rule_set_name)
-      : OptimizerTask<Node,OperatorType,OperatorExpr>(context, OptimizerTaskType::TOP_DOWN_REWRITE),
-        group_id_(group_id),
-        rule_set_name_(rule_set_name) {}
+      : RewriteTask<Node,OperatorType,OperatorExpr>(OptimizerTaskType::TOP_DOWN_REWRITE, group_id, context, rule_set_name),
+        replace_on_transform_(true) {}
+
+  void SetReplaceOnTransform(bool replace) { replace_on_transform_ = replace; }
   virtual void execute() override;
 
  private:
-  GroupID group_id_;
-  RewriteRuleSetName rule_set_name_;
+  bool replace_on_transform_;
 };
 
 /**
@@ -292,20 +323,17 @@ class TopDownRewrite : public OptimizerTask<Node,OperatorType,OperatorExpr> {
  * level rewrite.
  */
 template <class Node, class OperatorType, class OperatorExpr>
-class BottomUpRewrite : public OptimizerTask<Node,OperatorType,OperatorExpr> {
+class BottomUpRewrite : public RewriteTask<Node,OperatorType,OperatorExpr> {
  public:
   BottomUpRewrite(GroupID group_id,
                   std::shared_ptr<OptimizeContext<Node,OperatorType,OperatorExpr>> context,
                   RewriteRuleSetName rule_set_name, bool has_optimized_child)
-      : OptimizerTask<Node,OperatorType,OperatorExpr>(context, OptimizerTaskType::BOTTOM_UP_REWRITE),
-        group_id_(group_id),
-        rule_set_name_(rule_set_name),
+      : RewriteTask<Node,OperatorType,OperatorExpr>(OptimizerTaskType::BOTTOM_UP_REWRITE, group_id, context, rule_set_name),
         has_optimized_child_(has_optimized_child) {}
+
   virtual void execute() override;
 
  private:
-  GroupID group_id_;
-  RewriteRuleSetName rule_set_name_;
   bool has_optimized_child_;
 };
 }  // namespace optimizer
