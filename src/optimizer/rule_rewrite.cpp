@@ -387,6 +387,7 @@ void TransitiveClosureConstantTransform::Transform(std::shared_ptr<AbsExpr_Expre
   } else {
     // At this stage, we have knowledge that A.B = E.F
     new_right_eq->PushChild(r_tv_l);
+    new_right_eq->PushChild(right_val_copy);
   }
 
   // Create new root expression
