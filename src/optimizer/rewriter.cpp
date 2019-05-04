@@ -65,10 +65,10 @@ void Rewriter::RewriteLoop(int root_group_id) {
   auto task_stack = std::unique_ptr<OptimizerTaskStackTemplate>(new OptimizerTaskStackTemplate());
   metadata_.SetTaskPool(task_stack.get());
 
-  // Perform rewrite first
-  task_stack->Push(new BottomUpRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::TRANSITIVE_TRANSFORM, false));
-  task_stack->Push(new BottomUpRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::COMPARATOR_ELIMINATION, false));
+  // Rewrite using all rules (which will be applied based on priority)
+  task_stack->Push(new BottomUpRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::GENERIC_RULES, false));
 
+  // Generate equivalences first
   auto equiv_task = new TopDownRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::EQUIVALENT_TRANSFORM);
   equiv_task->SetReplaceOnTransform(false); // generate equivalent
   task_stack->Push(equiv_task);

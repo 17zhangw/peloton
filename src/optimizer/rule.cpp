@@ -67,7 +67,7 @@ RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
 
   for (auto &pair : comp_elim_pairs) {
     AddRewriteRule(
-      RewriteRuleSetName::COMPARATOR_ELIMINATION,
+      RewriteRuleSetName::GENERIC_RULES,
       new ComparatorElimination(pair.first, pair.second)
     );
   }
@@ -86,8 +86,8 @@ RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
   }
 
   // Additional rules
-  AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TVEqualityWithTwoCVTransform());
-  AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TransitiveClosureConstantTransform());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new TVEqualityWithTwoCVTransform());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new TransitiveClosureConstantTransform());
 }
 
 template <>

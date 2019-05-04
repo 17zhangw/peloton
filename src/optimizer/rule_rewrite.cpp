@@ -37,7 +37,7 @@ int ComparatorElimination::Promise(GroupExprTemplate *group_expr,
                                    OptimizeContextTemplate *context) const {
   (void)group_expr;
   (void)context;
-  return static_cast<int>(RulePriority::HIGH);
+  return static_cast<int>(RulePriority::MEDIUM);
 }
 
 bool ComparatorElimination::Check(std::shared_ptr<AbsExpr_Expression> plan,
@@ -202,7 +202,7 @@ TVEqualityWithTwoCVTransform::TVEqualityWithTwoCVTransform() {
 int TVEqualityWithTwoCVTransform::Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const {
   (void)group_expr;
   (void)context;
-  return static_cast<int>(RulePriority::HIGH);
+  return static_cast<int>(RulePriority::LOW);
 }
 
 bool TVEqualityWithTwoCVTransform::Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const {
@@ -312,7 +312,7 @@ TransitiveClosureConstantTransform::TransitiveClosureConstantTransform() {
 int TransitiveClosureConstantTransform::Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const {
   (void)group_expr;
   (void)context;
-  return static_cast<int>(RulePriority::HIGH);
+  return static_cast<int>(RulePriority::LOW);
 }
 
 bool TransitiveClosureConstantTransform::Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const {
