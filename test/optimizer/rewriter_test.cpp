@@ -18,6 +18,7 @@
 #include "expression/constant_value_expression.h"
 #include "expression/comparison_expression.h"
 #include "expression/tuple_value_expression.h"
+#include "expression/operator_expression.h"
 #include "type/value_factory.h"
 #include "type/value_peeker.h"
 #include "optimizer/rule_rewrite.h"
@@ -258,6 +259,163 @@ TEST_F(RewriterTests, BasicOrShortCircuitTest) {
 
   delete rewrote;
   delete root;
+
+  delete rewriter;
+}
+
+
+TEST_F(RewriterTests, AndShortCircuitComparatorEliminationMixTest) {
+  //                      [AND]
+  //                  [<=]     [=]
+  //                [4] [4]  [5] [3]
+  //             Intended Output: FALSE
+  //
+  type::Value val4 = type::ValueFactory::GetIntegerValue(4);
+  type::Value val5 = type::ValueFactory::GetIntegerValue(5);
+  type::Value val3 = type::ValueFactory::GetIntegerValue(3);
+
+  auto lb_left_child = new expression::ConstantValueExpression(val4);
+  auto lb_right_child = new expression::ConstantValueExpression(val4);
+  auto rb_left_child = new expression::ConstantValueExpression(val5);
+  auto rb_right_child = new expression::ConstantValueExpression(val3);
+
+  auto lb = new expression::ComparisonExpression(ExpressionType::COMPARE_LESSTHANOREQUALTO,
+                                                 lb_left_child, lb_right_child);
+  auto rb = new expression::ComparisonExpression(ExpressionType::COMPARE_EQUAL,
+                                                 rb_left_child, rb_right_child);
+  auto top = new expression::ConjunctionExpression(ExpressionType::CONJUNCTION_AND, lb, rb);
+
+  Rewriter *rewriter = new Rewriter();
+  auto rewrote = rewriter->RewriteExpression(top);
+
+  delete rewriter;
+  delete top;
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_TRUE(rewrote->GetChildrenSize() == 0);
+  EXPECT_TRUE(rewrote->GetExpressionType() == ExpressionType::VALUE_CONSTANT);
+
+  auto casted = dynamic_cast<expression::ConstantValueExpression*>(rewrote);
+  EXPECT_TRUE(casted->GetValueType() == type::TypeId::BOOLEAN);
+  EXPECT_TRUE(type::ValuePeeker::PeekBoolean(casted->GetValue()) == false);
+
+  delete rewrote;
+}
+
+
+TEST_F(RewriterTests, OrShortCircuitComparatorEliminationMixTest) {
+  //                      [OR]
+  //                  [<=]    [=]
+  //                [4] [4] [5] [3]
+  //             Intended Output: TRUE
+  //
+  type::Value val4 = type::ValueFactory::GetIntegerValue(4);
+  type::Value val5 = type::ValueFactory::GetIntegerValue(5);
+  type::Value val3 = type::ValueFactory::GetIntegerValue(3);
+
+  auto lb_left_child = new expression::ConstantValueExpression(val4);
+  auto lb_right_child = new expression::ConstantValueExpression(val4);
+  auto rb_left_child = new expression::ConstantValueExpression(val5);
+  auto rb_right_child = new expression::ConstantValueExpression(val3);
+
+  auto lb = new expression::ComparisonExpression(ExpressionType::COMPARE_LESSTHANOREQUALTO,
+                                                 lb_left_child, lb_right_child);
+  auto rb = new expression::ComparisonExpression(ExpressionType::COMPARE_EQUAL,
+                                                 rb_left_child, rb_right_child);
+  auto top = new expression::ConjunctionExpression(ExpressionType::CONJUNCTION_OR, lb, rb);
+
+  Rewriter *rewriter = new Rewriter();
+  auto rewrote = rewriter->RewriteExpression(top);
+
+  delete rewriter;
+  delete top;
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_TRUE(rewrote->GetChildrenSize() == 0);
+  EXPECT_TRUE(rewrote->GetExpressionType() == ExpressionType::VALUE_CONSTANT);
+
+  auto casted = dynamic_cast<expression::ConstantValueExpression*>(rewrote);
+  EXPECT_TRUE(casted->GetValueType() == type::TypeId::BOOLEAN);
+  EXPECT_TRUE(type::ValuePeeker::PeekBoolean(casted->GetValue()) == true);
+
+  delete rewrote;
+}
+
+
+TEST_F(RewriterTests, NotNullColumnsTest) {
+
+  // First, build rewriter to be used in all test cases
+  Rewriter *rewriter = new Rewriter();
+
+  // [T.X IS NULL], where X is a non-NULL column in table T
+  //     Intended output: FALSE
+
+  auto child = new expression::TupleValueExpression("t","x");
+  child->SetIsNotNull(true);
+  auto root = new expression::OperatorExpression(ExpressionType::OPERATOR_IS_NULL, type::TypeId::BOOLEAN, child, nullptr);
+
+  auto rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_EQ(rewrote->GetChildrenSize(), 0);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::VALUE_CONSTANT);
+
+  auto casted = dynamic_cast<expression::ConstantValueExpression*>(rewrote);
+  EXPECT_EQ(casted->GetValueType(), type::TypeId::BOOLEAN);
+  EXPECT_EQ(type::ValuePeeker::PeekBoolean(casted->GetValue()), false);
+
+  delete root;
+  delete rewrote;
+
+  // [T.X IS NOT NULL], where X is a non-NULL column in table T
+  //     Intended output: TRUE
+
+  child = new expression::TupleValueExpression("t","x");
+  child->SetIsNotNull(true);
+  root = new expression::OperatorExpression(ExpressionType::OPERATOR_IS_NOT_NULL, type::TypeId::BOOLEAN, child, nullptr);
+
+  rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_EQ(rewrote->GetChildrenSize(), 0);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::VALUE_CONSTANT);
+
+  casted = dynamic_cast<expression::ConstantValueExpression*>(rewrote);
+  EXPECT_EQ(casted->GetValueType(), type::TypeId::BOOLEAN);
+  EXPECT_EQ(type::ValuePeeker::PeekBoolean(casted->GetValue()), true);
+
+  delete root;
+  delete rewrote;
+
+  // [T.Y IS NULL], where Y is a possibly NULL column in table T
+  //     Intended output: same as input
+
+  child = new expression::TupleValueExpression("t","y");
+  child->SetIsNotNull(false); // is_not_null is false by default, but explicitly setting it is for readability's sake
+  root = new expression::OperatorExpression(ExpressionType::OPERATOR_IS_NULL, type::TypeId::BOOLEAN, child, nullptr);
+
+  rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_EQ(rewrote->GetChildrenSize(), 1);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::OPERATOR_IS_NULL);
+
+  delete root;
+  delete rewrote;
+
+  // [T.Y IS NOT NULL], where Y is a possibly NULL column in table T
+  //     Intended output: same as input
+
+  child = new expression::TupleValueExpression("t","y");
+  child->SetIsNotNull(false); // is_not_null is false by default, but explicitly setting it is for readability's sake
+  root = new expression::OperatorExpression(ExpressionType::OPERATOR_IS_NOT_NULL, type::TypeId::BOOLEAN, child, nullptr);
+
+  rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_EQ(rewrote->GetChildrenSize(), 1);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::OPERATOR_IS_NOT_NULL);
+
+  delete root;
+  delete rewrote;
 
   delete rewriter;
 }

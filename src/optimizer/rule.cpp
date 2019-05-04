@@ -91,6 +91,9 @@ RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
 
   AddRewriteRule(RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT, new AndShortCircuit());
   AddRewriteRule(RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT, new OrShortCircuit());
+
+  AddRewriteRule(RewriteRuleSetName::NULL_LOOKUP, new NullLookupOnNotNullColumn());
+  AddRewriteRule(RewriteRuleSetName::NULL_LOOKUP, new NotNullLookupOnNotNullColumn());
 }
 
 template <>

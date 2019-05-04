@@ -12,11 +12,15 @@
 
 #include "optimizer/binding.h"
 
+#include <memory>
+
 #include "common/logger.h"
 #include "optimizer/operator_visitor.h"
 #include "optimizer/optimizer.h"
 #include "optimizer/absexpr_expression.h"
 #include "expression/group_marker_expression.h"
+#include "expression/abstract_expression.h"
+#include "expression/tuple_value_expression.h"
 
 namespace peloton {
 namespace optimizer {
@@ -134,6 +138,7 @@ GroupExprBindingIterator<Node,OperatorType,OperatorExpr>::GroupExprBindingIterat
       first_(true),
       has_next_(false),
       current_binding_(std::make_shared<OperatorExpr>(gexpr->Op())) {
+  // First check to make sure that types of pattern & expression match
   if (gexpr->Op().GetType() != pattern->Type()) {
     return;
   }

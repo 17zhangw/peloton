@@ -66,9 +66,11 @@ void Rewriter::RewriteLoop(int root_group_id) {
   metadata_.SetTaskPool(task_stack.get());
 
   // Perform rewrite first
+  task_stack->Push(new TopDownRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT));
   task_stack->Push(new BottomUpRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::TRANSITIVE_TRANSFORM, false));
   task_stack->Push(new BottomUpRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::COMPARATOR_ELIMINATION, false));
 
+  task_stack->Push(new BottomUpRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::NULL_LOOKUP, false));
   auto equiv_task = new TopDownRewriteTemplate(root_group_id, root_context, RewriteRuleSetName::EQUIVALENT_TRANSFORM);
   equiv_task->SetReplaceOnTransform(false); // generate equivalent
   task_stack->Push(equiv_task);

@@ -96,5 +96,28 @@ class OrShortCircuit: public Rule<AbsExpr_Container,ExpressionType,AbsExpr_Expre
                  OptimizeContextTemplate *context) const override;
 };
 
+class NullLookupOnNotNullColumn: public Rule<AbsExpr_Container,ExpressionType,AbsExpr_Expression> {
+ public:
+  NullLookupOnNotNullColumn();
+
+  int Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const override;
+  bool Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const override;
+  void Transform(std::shared_ptr<AbsExpr_Expression> input,
+                 std::vector<std::shared_ptr<AbsExpr_Expression>> &transformed,
+                 OptimizeContextTemplate *context) const override;
+};
+
+class NotNullLookupOnNotNullColumn: public Rule<AbsExpr_Container,ExpressionType,AbsExpr_Expression> {
+ public:
+  NotNullLookupOnNotNullColumn();
+
+  int Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const override;
+  bool Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const override;
+  void Transform(std::shared_ptr<AbsExpr_Expression> input,
+                 std::vector<std::shared_ptr<AbsExpr_Expression>> &transformed,
+                 OptimizeContextTemplate *context) const override;
+};
+
+
 }  // namespace optimizer
 }  // namespace peloton
