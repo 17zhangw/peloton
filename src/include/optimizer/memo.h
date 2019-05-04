@@ -83,8 +83,11 @@ class Memo {
   // a new one, which reqires us to first remove the original gexpr from the
   // memo
   void EraseExpression(GroupID group_id) {
-    auto gexpr = groups_[group_id]->GetLogicalExpression();
-    group_expressions_.erase(gexpr);
+    std::vector<std::shared_ptr<GroupExpression<Node,OperatorType,OperatorExpr>>> gexprs = groups_[group_id]->GetLogicalExpressions();
+    for (auto gexpr : gexprs) {
+      group_expressions_.erase(gexpr.get());
+    }
+
     groups_[group_id]->EraseLogicalExpression();
   }
 

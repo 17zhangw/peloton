@@ -459,10 +459,13 @@ bool RewriteTask<Node,OperatorType,OperatorExpr>::OptimizeCurrentGroup(bool repl
     for (auto &r : valid_rules) {
       GroupExprBindingIterator<Node,OperatorType,OperatorExpr> iterator(this->GetMemo(), cur_group_expr,
                                                                         r.rule->GetMatchPattern());
-      if (iterator.HasNext()) {
+      // Keep trying to apply until we exhaust all the bindings.
+      // This could possibly be sub-optimal since the first binding that results
+      // in a transformation by a rule will be applied and become the group's
+      // "new" rewritten expression.
+      while (iterator.HasNext()) {
         // Binding succeeded to a given expression structure
         auto before = iterator.Next();
-        PELOTON_ASSERT(!iterator.HasNext());
 
         // Attempt to apply the transformation
         std::vector<std::shared_ptr<OperatorExpr>> after;

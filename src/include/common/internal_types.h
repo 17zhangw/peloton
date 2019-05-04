@@ -1388,9 +1388,9 @@ enum class RuleType : uint32_t {
   // Logical equivalent
   EQUIV_AND,
   EQUIV_OR,
+  EQUIV_COMPARE_EQUAL,
 
-  // Transitive column related rules
-  TRANSITIVE_SINGLE_DEPTH,  // (A.B = x) AND (A.B = y)
+  TV_EQUALITY_WITH_TWO_CV, // (A.B = x) AND (A.B = y) where x/y are constant
   TRANSITIVE_CLOSURE_CONSTANT,  // (A.B = x) AND (A.B = C.D)
 
   // Place holder to generate number of rules compile time

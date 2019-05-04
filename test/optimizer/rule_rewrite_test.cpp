@@ -31,7 +31,7 @@ using namespace optimizer;
 class RuleRewriteTests : public PelotonTest {
  public:
   // Creates expresson: (A = X) AND (B = Y)
-  expression::AbstractExpression *CreateTransitiveExpression(expression::AbstractExpression *a,
+  expression::AbstractExpression *CreateMultiLevelExpression(expression::AbstractExpression *a,
                                                              expression::AbstractExpression *x,
                                                              expression::AbstractExpression *b,
                                                              expression::AbstractExpression *y) {
@@ -302,7 +302,7 @@ TEST_F(RuleRewriteTests, ComparatorEliminationLessThanOrEqualToNull) {
   delete rewrote;
 }
 
-TEST_F(RuleRewriteTests, TransitiveSingleDepthFalseTransform) {
+TEST_F(RuleRewriteTests, TVEqualTwoCVFalseTransform) {
   auto cv1 = GetConstantExpression(1);
   auto cv2 = GetConstantExpression(2);
   auto tv_base = new expression::TupleValueExpression("B", "A");
@@ -310,22 +310,22 @@ TEST_F(RuleRewriteTests, TransitiveSingleDepthFalseTransform) {
   Rewriter *rewriter = new Rewriter();
 
   // Base: (A.B = 1) AND (A.B = 2)
-  auto base = CreateTransitiveExpression(tv_base, cv1, tv_base, cv2);
+  auto base = CreateMultiLevelExpression(tv_base, cv1, tv_base, cv2);
 
   // Inverse: (1 = A.B) AND (2 = A.B)
-  auto inverse = CreateTransitiveExpression(cv1, tv_base, cv2, tv_base);
+  auto inverse = CreateMultiLevelExpression(cv1, tv_base, cv2, tv_base);
 
   // Inner Flip Left: (1 = A.B) AND (A.B = 2)
-  auto if_left = CreateTransitiveExpression(cv1, tv_base, tv_base, cv2);
+  auto if_left = CreateMultiLevelExpression(cv1, tv_base, tv_base, cv2);
 
   // Inner Flip Right: (A.B = 1) AND (2 = A.B)
-  auto if_right = CreateTransitiveExpression(tv_base, cv1, cv2, tv_base);
+  auto if_right = CreateMultiLevelExpression(tv_base, cv1, cv2, tv_base);
 
   std::vector<expression::AbstractExpression*> rewrites;
   rewrites.push_back(rewriter->RewriteExpression(base));
-  //rewrites.push_back(rewriter->RewriteExpression(inverse));
-  //rewrites.push_back(rewriter->RewriteExpression(if_left));
-  //rewrites.push_back(rewriter->RewriteExpression(if_right));
+  rewrites.push_back(rewriter->RewriteExpression(inverse));
+  rewrites.push_back(rewriter->RewriteExpression(if_left));
+  rewrites.push_back(rewriter->RewriteExpression(if_right));
   delete rewriter;
   delete cv1;
   delete cv2;
@@ -351,5 +351,170 @@ TEST_F(RuleRewriteTests, TransitiveSingleDepthFalseTransform) {
   }
 }
 
+TEST_F(RuleRewriteTests, TVEqualTwoCVTrueTransform) {
+  auto cv1 = GetConstantExpression(1);
+  auto tv_base = new expression::TupleValueExpression("B", "A");
+
+  Rewriter *rewriter = new Rewriter();
+
+  // Base: (A.B = 1) AND (A.B = 1)
+  auto base = CreateMultiLevelExpression(tv_base, cv1, tv_base, cv1);
+
+  // Inverse: (1 = A.B) AND (1 = A.B)
+  auto inverse = CreateMultiLevelExpression(cv1, tv_base, cv1, tv_base);
+
+  // Inner Flip Left: (1 = A.B) AND (A.B = 1)
+  auto if_left = CreateMultiLevelExpression(cv1, tv_base, tv_base, cv1);
+
+  // Inner Flip Right: (A.B = 1) AND (1 = A.B)
+  auto if_right = CreateMultiLevelExpression(tv_base, cv1, cv1, tv_base);
+
+  std::vector<expression::AbstractExpression*> rewrites;
+  rewrites.push_back(rewriter->RewriteExpression(base));
+  rewrites.push_back(rewriter->RewriteExpression(inverse));
+  rewrites.push_back(rewriter->RewriteExpression(if_left));
+  rewrites.push_back(rewriter->RewriteExpression(if_right));
+  delete rewriter;
+  delete cv1;
+  delete base;
+  delete inverse;
+  delete if_left;
+  delete if_right;
+
+  for (auto expr : rewrites) {
+    EXPECT_TRUE(expr->GetExpressionType() == ExpressionType::COMPARE_EQUAL);
+    EXPECT_TRUE(expr->GetChildrenSize() == 2);
+
+    auto left_tv = expr->GetModifiableChild(0);
+    auto tv = dynamic_cast<expression::TupleValueExpression*>(left_tv);
+    EXPECT_TRUE(tv != nullptr);
+    EXPECT_TRUE(tv->ExactlyEquals(*tv_base));
+
+    auto right_cv = expr->GetModifiableChild(1);
+    auto cv = dynamic_cast<expression::ConstantValueExpression*>(right_cv);
+    EXPECT_TRUE(cv != nullptr);
+    EXPECT_TRUE(type::ValuePeeker::PeekInteger(cv->GetValue()) == 1);
+  }
+
+  while (!rewrites.empty()) {
+    auto expr = rewrites.back();
+    rewrites.pop_back();
+    delete expr;
+  }
+
+  delete tv_base;
+}
+
+TEST_F(RuleRewriteTests, TransitiveClosureUnableTest) {
+  auto cv1 = GetConstantExpression(1);
+  auto tv_base1 = new expression::TupleValueExpression("B", "A");
+  auto tv_base2 = new expression::TupleValueExpression("C", "A");
+  auto tv_base3 = new expression::TupleValueExpression("D", "A");
+
+  Rewriter *rewriter = new Rewriter();
+
+  // Base (A = 1) AND (B = C)
+  auto base = CreateMultiLevelExpression(tv_base1, cv1, tv_base2, tv_base3);
+
+  auto expr = rewriter->RewriteExpression(base);
+  delete rewriter;
+  delete base;
+
+  // Returned expression should not be changed
+  EXPECT_TRUE(expr->GetExpressionType() == ExpressionType::CONJUNCTION_AND);
+  EXPECT_TRUE(expr->GetChildrenSize() == 2);
+
+  auto left_eq = expr->GetModifiableChild(0);
+  auto right_eq = expr->GetModifiableChild(1);
+  EXPECT_TRUE(left_eq->GetExpressionType() == ExpressionType::COMPARE_EQUAL);
+  EXPECT_TRUE(right_eq->GetExpressionType() == ExpressionType::COMPARE_EQUAL);
+  EXPECT_TRUE(left_eq->GetChildrenSize() == 2);
+  EXPECT_TRUE(right_eq->GetChildrenSize() == 2);
+
+  auto ll_tv = dynamic_cast<expression::TupleValueExpression*>(left_eq->GetModifiableChild(0));
+  auto lr_cv = dynamic_cast<expression::ConstantValueExpression*>(left_eq->GetModifiableChild(1));
+  auto rl_tv = dynamic_cast<expression::TupleValueExpression*>(right_eq->GetModifiableChild(0));
+  auto rr_tv = dynamic_cast<expression::TupleValueExpression*>(right_eq->GetModifiableChild(1));
+  EXPECT_TRUE(ll_tv != nullptr && lr_cv != nullptr && rl_tv != nullptr && rr_tv != nullptr);
+  EXPECT_TRUE(lr_cv->ExactlyEquals(*cv1));
+  EXPECT_TRUE(ll_tv->ExactlyEquals(*tv_base1));
+  EXPECT_TRUE(rl_tv->ExactlyEquals(*tv_base2));
+  EXPECT_TRUE(rr_tv->ExactlyEquals(*tv_base3));
+
+  delete cv1;
+  delete tv_base1;
+  delete tv_base2;
+  delete tv_base3;
+  delete expr;
+}
+
+TEST_F(RuleRewriteTests, TransitiveClosureRewrite) {
+  auto cv1 = GetConstantExpression(1);
+  auto tv_base1 = new expression::TupleValueExpression("B", "A");
+  auto tv_base2 = new expression::TupleValueExpression("C", "A");
+
+  Rewriter *rewriter = new Rewriter();
+
+  // Base (A = 1) AND (A = B)
+  auto base = CreateMultiLevelExpression(tv_base1, cv1, tv_base1, tv_base2);
+
+  auto expr = rewriter->RewriteExpression(base);
+  delete rewriter;
+  delete base;
+
+  // Returned expression should not be changed
+  EXPECT_TRUE(expr->GetExpressionType() == ExpressionType::CONJUNCTION_AND);
+  EXPECT_TRUE(expr->GetChildrenSize() == 2);
+
+  auto left_eq = expr->GetModifiableChild(0);
+  auto right_eq = expr->GetModifiableChild(1);
+  EXPECT_TRUE(left_eq->GetExpressionType() == ExpressionType::COMPARE_EQUAL);
+  EXPECT_TRUE(right_eq->GetExpressionType() == ExpressionType::COMPARE_EQUAL);
+  EXPECT_TRUE(left_eq->GetChildrenSize() == 2);
+  EXPECT_TRUE(right_eq->GetChildrenSize() == 2);
+
+  auto ll_tv = dynamic_cast<expression::TupleValueExpression*>(left_eq->GetModifiableChild(0));
+  auto lr_cv = dynamic_cast<expression::ConstantValueExpression*>(left_eq->GetModifiableChild(1));
+  auto rl_cv = dynamic_cast<expression::ConstantValueExpression*>(right_eq->GetModifiableChild(0));
+  auto rr_tv = dynamic_cast<expression::TupleValueExpression*>(right_eq->GetModifiableChild(1));
+  EXPECT_TRUE(ll_tv != nullptr && lr_cv != nullptr && rl_cv != nullptr && rr_tv != nullptr);
+  EXPECT_TRUE(lr_cv->ExactlyEquals(*cv1));
+  EXPECT_TRUE(ll_tv->ExactlyEquals(*tv_base1));
+  EXPECT_TRUE(rl_cv->ExactlyEquals(*cv1));
+  EXPECT_TRUE(rr_tv->ExactlyEquals(*tv_base2));
+
+  delete cv1;
+  delete tv_base1;
+  delete tv_base2;
+  delete expr;
+}
+
+TEST_F(RuleRewriteTests, TransitiveClosureHalfTrue) {
+  auto cv1 = GetConstantExpression(1);
+  auto tv_base1 = new expression::TupleValueExpression("B", "A");
+
+  Rewriter *rewriter = new Rewriter();
+
+  // Base (A = 1) AND (A = B)
+  auto base = CreateMultiLevelExpression(tv_base1, cv1, tv_base1, tv_base1);
+
+  auto expr = rewriter->RewriteExpression(base);
+  delete rewriter;
+  delete base;
+
+  // Returned expression should not be changed
+  EXPECT_TRUE(expr->GetExpressionType() == ExpressionType::COMPARE_EQUAL);
+  EXPECT_TRUE(expr->GetChildrenSize() == 2);
+
+  auto ll_tv = dynamic_cast<expression::TupleValueExpression*>(expr->GetModifiableChild(0));
+  auto lr_cv = dynamic_cast<expression::ConstantValueExpression*>(expr->GetModifiableChild(1));
+  EXPECT_TRUE(ll_tv != nullptr && lr_cv != nullptr);
+  EXPECT_TRUE(lr_cv->ExactlyEquals(*cv1));
+  EXPECT_TRUE(ll_tv->ExactlyEquals(*tv_base1));
+
+  delete cv1;
+  delete tv_base1;
+  delete expr;
+}
 }  // namespace test
 }  // namespace peloton
