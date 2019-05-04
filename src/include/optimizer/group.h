@@ -100,7 +100,10 @@ class Group : public Printable {
   // This is called in rewrite phase to erase the only logical expression in the
   // group
   inline void EraseLogicalExpression() {
-    PELOTON_ASSERT(logical_expressions_.size() == 1);
+    // During query rewriting (pre-optimizer), the rewriter can execute in a scenario
+    // where a group can have multiple logical expressions (due to AND/OR/= equivalence).
+    // TODO(): refine these assertions to distinguish between optimizer/rewrite stages
+    PELOTON_ASSERT(logical_expressions_.size() >= 1);
     PELOTON_ASSERT(physical_expressions_.size() == 0);
     logical_expressions_.clear();
   }

@@ -52,9 +52,9 @@ class EquivalentTransform: public Rule<AbsExpr_Container,ExpressionType,AbsExpr_
                  OptimizeContextTemplate *context) const override;
 };
 
-class TransitiveSingleDepthTransform: public Rule<AbsExpr_Container,ExpressionType,AbsExpr_Expression> {
+class TVEqualityWithTwoCVTransform: public Rule<AbsExpr_Container,ExpressionType,AbsExpr_Expression> {
  public:
-  TransitiveSingleDepthTransform();
+  TVEqualityWithTwoCVTransform();
 
   int Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const override;
   bool Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const override;

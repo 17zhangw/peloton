@@ -177,8 +177,8 @@ void EquivalentTransform::Transform(std::shared_ptr<AbsExpr_Expression> input,
 // Transitive-Transform related functions
 //
 // ===========================================================
-TransitiveSingleDepthTransform::TransitiveSingleDepthTransform() {
-  type_ = RuleType::TRANSITIVE_SINGLE_DEPTH;
+TVEqualityWithTwoCVTransform::TVEqualityWithTwoCVTransform() {
+  type_ = RuleType::TV_EQUALITY_WITH_TWO_CV;
 
   // (A.B = x) AND (A.B = y)
   match_pattern = std::make_shared<Pattern<ExpressionType>>(ExpressionType::CONJUNCTION_AND);
@@ -199,23 +199,39 @@ TransitiveSingleDepthTransform::TransitiveSingleDepthTransform() {
   match_pattern->AddChild(r_eq);
 }
 
+<<<<<<< Updated upstream
 int TransitiveSingleDepthTransform::Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const {
+=======
+int TVEqualityWithTwoCVTransform::Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const {
+>>>>>>> Stashed changes
   (void)group_expr;
   (void)context;
   return static_cast<int>(RulePriority::HIGH);
 }
 
+<<<<<<< Updated upstream
 bool TransitiveSingleDepthTransform::Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const {
+=======
+bool TVEqualityWithTwoCVTransform::Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const {
+>>>>>>> Stashed changes
   (void)plan;
   (void)context;
   return true;
 }
 
+<<<<<<< Updated upstream
 void TransitiveSingleDepthTransform::Transform(std::shared_ptr<AbsExpr_Expression> input,
                                                std::vector<std::shared_ptr<AbsExpr_Expression>> &transformed,
                                                OptimizeContextTemplate *context) const {
   (void)context;
   //TODO(wz2): TransitiveClosureConstant should work beyond straight equality
+=======
+void TVEqualityWithTwoCVTransform::Transform(std::shared_ptr<AbsExpr_Expression> input,
+                                               std::vector<std::shared_ptr<AbsExpr_Expression>> &transformed,
+                                               OptimizeContextTemplate *context) const {
+  (void)context;
+  //TODO(wz2): TVEqualityWithTwoCVTransform should work beyond straight equality
+>>>>>>> Stashed changes
 
   // Asserting guarantees provided by the GroupExprBindingIterator
   // Structure: (A.B = x) AND (A.B = y)
@@ -344,7 +360,11 @@ void TransitiveClosureConstantTransform::Transform(std::shared_ptr<AbsExpr_Expre
   PELOTON_ASSERT(l_tv->Children().size() == 0);
   PELOTON_ASSERT(l_cv->Children().size() == 0);
   PELOTON_ASSERT(l_tv->Op().GetType() == ExpressionType::VALUE_TUPLE);
+<<<<<<< Updated upstream
   PELOTON_ASSERT(l_tv->Op().GetType() == ExpressionType::VALUE_CONSTANT);
+=======
+  PELOTON_ASSERT(l_cv->Op().GetType() == ExpressionType::VALUE_CONSTANT);
+>>>>>>> Stashed changes
 
   auto r_tv_l = r_eq->Children()[0];
   auto r_tv_r = r_eq->Children()[1];
@@ -386,7 +406,11 @@ void TransitiveClosureConstantTransform::Transform(std::shared_ptr<AbsExpr_Expre
     new_right_eq->PushChild(r_tv_r);
   } else {
     // At this stage, we have knowledge that A.B = E.F
+<<<<<<< Updated upstream
     new_right_eq->PushChild(r_tv_r);
+=======
+    new_right_eq->PushChild(r_tv_l);
+>>>>>>> Stashed changes
     new_right_eq->PushChild(right_val_copy);
   }
 

@@ -581,15 +581,15 @@ ResultType TrafficCop::ExecuteStatement(
         statement, std::move(param_stats));
   }
 
-  LOG_TRACE("Execute Statement of name: %s",
+  LOG_DEBUG("Execute Statement of name: %s",
             statement->GetStatementName().c_str());
-  LOG_TRACE("Execute Statement of query: %s",
+  LOG_DEBUG("Execute Statement of query: %s",
             statement->GetQueryString().c_str());
-  LOG_TRACE("Execute Statement Plan:\n%s",
+  LOG_DEBUG("Execute Statement Plan:\n%s",
             planner::PlanUtil::GetInfo(statement->GetPlanTree().get()).c_str());
-  LOG_TRACE("Execute Statement Query Type: %s",
+  LOG_DEBUG("Execute Statement Query Type: %s",
             statement->GetQueryTypeString().c_str());
-  LOG_TRACE("----QueryType: %d--------",
+  LOG_DEBUG("----QueryType: %d--------",
             static_cast<int>(statement->GetQueryType()));
 
   try {
