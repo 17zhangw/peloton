@@ -397,5 +397,118 @@ void TransitiveClosureConstantTransform::Transform(std::shared_ptr<AbsExpr_Expre
   transformed.push_back(abs_expr);
 }
 
+// ===========================================================
+//
+// Boolean short-circuit related functions
+//
+// ===========================================================
+AndShortCircuit::AndShortCircuit() {
+  type_ = RuleType::AND_SHORT_CIRCUIT;
+
+  // (FALSE AND <any expression>)
+  match_pattern = std::make_shared<Pattern<ExpressionType>>(ExpressionType::CONJUNCTION_AND);
+  auto left_child = std::make_shared<Pattern<ExpressionType>>(ExpressionType::VALUE_CONSTANT);
+  auto right_child = std::make_shared<Pattern<ExpressionType>>(ExpressionType::GROUP_MARKER);
+
+  match_pattern->AddChild(left_child);
+  match_pattern->AddChild(right_child);
+}
+
+int AndShortCircuit::Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const {
+  (void)group_expr;
+  (void)context;
+  return static_cast<int>(RulePriority::HIGH);
+}
+
+bool AndShortCircuit::Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const {
+  (void)plan;
+  (void)context;
+  return true;
+}
+
+void AndShortCircuit::Transform(std::shared_ptr<AbsExpr_Expression> input,
+                                std::vector<std::shared_ptr<AbsExpr_Expression>> &transformed,
+                                OptimizeContextTemplate *context) const {
+  (void)context;
+  (void)transformed;
+
+  LOG_DEBUG("Transforming AND!");
+
+  // Asserting guarantees provided by the GroupExprBindingIterator
+  // Structure: (FALSE AND <any expression>)
+  PELOTON_ASSERT(input->Children().size() == 2);
+  PELOTON_ASSERT(input->Op().GetType() == ExpressionType::CONJUNCTION_AND);
+
+  std::shared_ptr<AbsExpr_Expression> left = input->Children()[0];
+  PELOTON_ASSERT(left->Children().size() == 0);
+  PELOTON_ASSERT(left->Op().GetType() == ExpressionType::VALUE_CONSTANT);
+
+  std::shared_ptr<expression::ConstantValueExpression> left_cv_expr = std::dynamic_pointer_cast<expression::ConstantValueExpression>(left->Op().GetExpr());
+  type::Value left_value = left_cv_expr->GetValue();
+
+  // Only transform the expression if we're ANDing a FALSE boolean value
+  if (left_value.GetTypeId() == type::TypeId::BOOLEAN && left_value.IsFalse()) {
+    type::Value val_false = type::ValueFactory::GetBooleanValue(false);
+    std::shared_ptr<expression::ConstantValueExpression> false_expr = std::make_shared<expression::ConstantValueExpression>(val_false);
+    std::shared_ptr<AbsExpr_Expression> false_container = std::make_shared<AbsExpr_Expression>(AbsExpr_Container(false_expr));
+    transformed.push_back(false_container);
+  }
+}
+
+
+OrShortCircuit::OrShortCircuit() {
+  type_ = RuleType::OR_SHORT_CIRCUIT;
+
+  // (FALSE AND <any expression>)
+  match_pattern = std::make_shared<Pattern<ExpressionType>>(ExpressionType::CONJUNCTION_OR);
+  auto left_child = std::make_shared<Pattern<ExpressionType>>(ExpressionType::VALUE_CONSTANT);
+  auto right_child = std::make_shared<Pattern<ExpressionType>>(ExpressionType::GROUP_MARKER);
+
+  match_pattern->AddChild(left_child);
+  match_pattern->AddChild(right_child);
+}
+
+int OrShortCircuit::Promise(GroupExprTemplate *group_expr, OptimizeContextTemplate *context) const {
+  (void)group_expr;
+  (void)context;
+  return static_cast<int>(RulePriority::HIGH);
+}
+
+bool OrShortCircuit::Check(std::shared_ptr<AbsExpr_Expression> plan, OptimizeContextTemplate *context) const {
+  (void)plan;
+  (void)context;
+  return true;
+}
+
+void OrShortCircuit::Transform(std::shared_ptr<AbsExpr_Expression> input,
+                                std::vector<std::shared_ptr<AbsExpr_Expression>> &transformed,
+                                OptimizeContextTemplate *context) const {
+  (void)context;
+  (void)transformed;
+
+  LOG_DEBUG("Transforming OR!");
+
+  // Asserting guarantees provided by the GroupExprBindingIterator
+  // Structure: (TRUE OR <any expression>)
+  PELOTON_ASSERT(input->Children().size() == 2);
+  PELOTON_ASSERT(input->Op().GetType() == ExpressionType::CONJUNCTION_OR);
+
+  std::shared_ptr<AbsExpr_Expression> left = input->Children()[0];
+  PELOTON_ASSERT(left->Children().size() == 0);
+  PELOTON_ASSERT(left->Op().GetType() == ExpressionType::VALUE_CONSTANT);
+
+  std::shared_ptr<expression::ConstantValueExpression> left_cv_expr = std::dynamic_pointer_cast<expression::ConstantValueExpression>(left->Op().GetExpr());
+  type::Value left_value = left_cv_expr->GetValue();
+
+  // Only transform the expression if we're ANDing a TRUE boolean value
+  if (left_value.GetTypeId() == type::TypeId::BOOLEAN && left_value.IsTrue()) {
+    type::Value val_true = type::ValueFactory::GetBooleanValue(true);
+    std::shared_ptr<expression::ConstantValueExpression> true_expr = std::make_shared<expression::ConstantValueExpression>(val_true);
+    std::shared_ptr<AbsExpr_Expression> true_container = std::make_shared<AbsExpr_Expression>(AbsExpr_Container(true_expr));
+    transformed.push_back(true_container);
+  }
+}
+
+
 }  // namespace optimizer
 }  // namespace peloton

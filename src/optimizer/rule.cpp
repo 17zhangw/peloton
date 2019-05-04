@@ -83,6 +83,9 @@ RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
 
   AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TransitiveSingleDepthTransform());
   AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TransitiveClosureConstantTransform());
+
+  AddRewriteRule(RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT, new AndShortCircuit());
+  AddRewriteRule(RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT, new OrShortCircuit());
 }
 
 template <>

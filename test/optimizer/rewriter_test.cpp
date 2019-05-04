@@ -142,5 +142,126 @@ TEST_F(RewriterTests, ComparativeOperatorTest) {
   delete rewrote;
 }
 
+TEST_F(RewriterTests, BasicAndShortCircuitTest) {
+
+  // First, build the rewriter and the values that will be used in test cases
+  Rewriter *rewriter = new Rewriter();
+
+  type::Value val_false = type::ValueFactory::GetBooleanValue(false);
+  type::Value val_true = type::ValueFactory::GetBooleanValue(true);
+  type::Value val3 = type::ValueFactory::GetIntegerValue(3);
+
+  //
+  //            [AND]
+  //     [FALSE]     [=]
+  //               [X] [3]
+  //
+  //  Intended output: [FALSE]
+  //
+
+  expression::ConstantValueExpression *lh = new expression::ConstantValueExpression(val_false);
+  expression::ConstantValueExpression *rh_right_child = new expression::ConstantValueExpression(val3);
+  expression::TupleValueExpression *rh_left_child = new expression::TupleValueExpression("t","x");
+
+  expression::ComparisonExpression *rh = new expression::ComparisonExpression(ExpressionType::COMPARE_EQUAL, rh_left_child, rh_right_child);
+  expression::ConjunctionExpression *root = new expression::ConjunctionExpression(ExpressionType::CONJUNCTION_AND, lh, rh);
+
+  expression::AbstractExpression *rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_EQ(rewrote->GetChildrenSize(), 0);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::VALUE_CONSTANT);
+
+  delete rewrote;
+  delete root;
+
+  //
+  //             [AND]
+  //       [TRUE]     [=]
+  //                [X] [3]
+  //
+  //  Intended output: same as input
+  //
+
+  lh = new expression::ConstantValueExpression(val_true);
+  rh_right_child = new expression::ConstantValueExpression(val3);
+  rh_left_child = new expression::TupleValueExpression("t","x");
+
+  rh = new expression::ComparisonExpression(ExpressionType::COMPARE_EQUAL, rh_left_child, rh_right_child);
+  root = new expression::ConjunctionExpression(ExpressionType::CONJUNCTION_AND, lh, rh);
+
+  rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_EQ(rewrote->GetChildrenSize(), 2);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::CONJUNCTION_AND);
+
+  delete rewrote;
+  delete root;
+
+  delete rewriter;
+}
+
+
+TEST_F(RewriterTests, BasicOrShortCircuitTest) {
+  // First, build the rewriter and the values that will be used in test cases
+  Rewriter *rewriter = new Rewriter();
+
+  type::Value val_false = type::ValueFactory::GetBooleanValue(false);
+  type::Value val_true = type::ValueFactory::GetBooleanValue(true);
+  type::Value val3 = type::ValueFactory::GetIntegerValue(3);
+
+  //
+  //            [OR]
+  //      [TRUE]    [=]
+  //              [X] [3]
+  //
+  //  Intended output: [TRUE]
+  //
+
+  expression::ConstantValueExpression *lh = new expression::ConstantValueExpression(val_true);
+  expression::ConstantValueExpression *rh_right_child = new expression::ConstantValueExpression(val3);
+  expression::TupleValueExpression *rh_left_child = new expression::TupleValueExpression("t","x");
+
+  expression::ComparisonExpression *rh = new expression::ComparisonExpression(ExpressionType::COMPARE_EQUAL, rh_left_child, rh_right_child);
+  expression::ConjunctionExpression *root = new expression::ConjunctionExpression(ExpressionType::CONJUNCTION_OR, lh, rh);
+
+  expression::AbstractExpression *rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_EQ(rewrote->GetChildrenSize(), 0);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::VALUE_CONSTANT);
+
+  delete rewrote;
+  delete root;
+
+  //
+  //              [OR]
+  //       [FALSE]    [=]
+  //                [X] [3]
+  //
+  //  Intended output: same as input
+  //
+
+  lh = new expression::ConstantValueExpression(val_false);
+  rh_right_child = new expression::ConstantValueExpression(val3);
+  rh_left_child = new expression::TupleValueExpression("t","x");
+
+  rh = new expression::ComparisonExpression(ExpressionType::COMPARE_EQUAL, rh_left_child, rh_right_child);
+  root = new expression::ConjunctionExpression(ExpressionType::CONJUNCTION_OR, lh, rh);
+
+  rewrote = rewriter->RewriteExpression(root);
+
+  EXPECT_TRUE(rewrote != nullptr);
+  EXPECT_EQ(rewrote->GetChildrenSize(), 2);
+  EXPECT_EQ(rewrote->GetExpressionType(), ExpressionType::CONJUNCTION_OR);
+
+  delete rewrote;
+  delete root;
+
+  delete rewriter;
+}
+
+
 }  // namespace test
 }  // namespace peloton

@@ -1393,6 +1393,10 @@ enum class RuleType : uint32_t {
   TRANSITIVE_SINGLE_DEPTH,  // (A.B = x) AND (A.B = y)
   TRANSITIVE_CLOSURE_CONSTANT,  // (A.B = x) AND (A.B = C.D)
 
+  // Boolean short-circuit rules
+  AND_SHORT_CIRCUIT, // (FALSE AND B)
+  OR_SHORT_CIRCUIT, // (TRUE OR B)
+
   // Place holder to generate number of rules compile time
   NUM_RULES
 
