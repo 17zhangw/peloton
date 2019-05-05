@@ -259,9 +259,10 @@ void BindNodeVisitor::Visit(expression::TupleValueExpression *expr) {
     //   memory error, but then this prevents the is_not_null flag of a tuple expression from being
     //   populated in some cases (specifically, when the expression's table name is initially empty).
 
-    // if (table_obj == nullptr) {
-    //   BinderContext::GetRegularTableObj(context_, table_name, table_obj, depth);
-    // }
+    //if (table_obj == nullptr) {
+    //  LOG_DEBUG("Extracting regular table object");
+    //  BinderContext::GetRegularTableObj(context_, table_name, table_obj, depth);
+    //}
     
     if (table_obj != nullptr) {
       expr->SetIsNotNull(table_obj->GetColumnCatalogEntry(std::get<2>(col_pos_tuple), false)->IsNotNull());

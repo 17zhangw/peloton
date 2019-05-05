@@ -98,9 +98,7 @@ class TupleValueExpression : public AbstractExpression {
   }
 
   AbstractExpression *Copy() const override {
-    TupleValueExpression *t = new TupleValueExpression(*this);
-    t->SetIsNotNull(GetIsNotNull());
-    return t;
+    return new TupleValueExpression(*this);
   }
 
   virtual bool operator==(const AbstractExpression &rhs) const override {
@@ -195,7 +193,8 @@ class TupleValueExpression : public AbstractExpression {
         value_idx_(other.value_idx_),
         tuple_idx_(other.tuple_idx_),
         table_name_(other.table_name_),
-        col_name_(other.col_name_) {}
+        col_name_(other.col_name_),
+        is_not_null_(other.is_not_null_) {}
 
   // Bound flag
   bool is_bound_ = false;
