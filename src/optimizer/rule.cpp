@@ -67,7 +67,7 @@ RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
 
   for (auto &pair : comp_elim_pairs) {
     AddRewriteRule(
-      RewriteRuleSetName::COMPARATOR_ELIMINATION,
+      RewriteRuleSetName::GENERIC_RULES,
       new ComparatorElimination(pair.first, pair.second)
     );
   }
@@ -86,14 +86,14 @@ RuleSet<AbsExpr_Container,ExpressionType,AbsExpr_Expression>::RuleSet() {
   }
 
   // Additional rules
-  AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TVEqualityWithTwoCVTransform());
-  AddRewriteRule(RewriteRuleSetName::TRANSITIVE_TRANSFORM, new TransitiveClosureConstantTransform());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new TVEqualityWithTwoCVTransform());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new TransitiveClosureConstantTransform());
 
-  AddRewriteRule(RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT, new AndShortCircuit());
-  AddRewriteRule(RewriteRuleSetName::BOOLEAN_SHORT_CIRCUIT, new OrShortCircuit());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new AndShortCircuit());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new OrShortCircuit());
 
-  AddRewriteRule(RewriteRuleSetName::NULL_LOOKUP, new NullLookupOnNotNullColumn());
-  AddRewriteRule(RewriteRuleSetName::NULL_LOOKUP, new NotNullLookupOnNotNullColumn());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new NullLookupOnNotNullColumn());
+  AddRewriteRule(RewriteRuleSetName::GENERIC_RULES, new NotNullLookupOnNotNullColumn());
 }
 
 template <>
